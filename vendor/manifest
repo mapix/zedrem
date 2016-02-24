@@ -2,9 +2,21 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/kardianos/osext",
+			"repository": "https://github.com/kardianos/osext",
+			"revision": "29ae4ffbc9a6fe9fb2bc5029050ce6996ea1d3bc",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/pborman/uuid",
 			"repository": "https://github.com/pborman/uuid",
 			"revision": "c55201b036063326c5b1b89ccfe45a184973d073",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/sevlyar/go-daemon",
+			"repository": "https://github.com/sevlyar/go-daemon",
+			"revision": "3bf5e993af87194518e81cf9a81c1c53190a8911",
 			"branch": "master"
 		},
 		{

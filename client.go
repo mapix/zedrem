@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/pborman/uuid"
+	daemon "github.com/sevlyar/go-daemon"
 	"golang.org/x/net/websocket"
 	"io"
 	"io/ioutil"
@@ -483,7 +484,14 @@ func RunClient(url string, id string, userKey string, rootPath string) {
 	} else {
 		fmt.Println("A Zed window should now open. If not, make sure Zed is running and configured with the correct userKey.")
 	}
-	fmt.Println("Press Ctrl-c to quit.")
+	context := new(daemon.Context)
+	child, _ := context.Reborn()
+
+	if child != nil {
+		os.Exit(0)
+	}
+	defer context.Release()
+	//fmt.Println("Press Ctrl-c to quit.")
 	err = multiplexer.Multiplex()
 	if err != nil {
 		// TODO do this in a cleaner way (reconnect, that is)
