@@ -408,12 +408,13 @@ func (self *RootedRPCHandler) handlePost(path string, requestChannel chan []byte
 }
 
 // Side-effect: writes to rootPath
-func ParseClientFlags(args []string) (id string, url string, userKey string, rootPath string) {
+func ParseClientFlags(args []string) (id string, url string, userKey string, rootPath string, daemonized bool) {
 	config := ParseConfig()
 
 	flagSet := flag.NewFlagSet("zedrem", flag.ExitOnError)
 	var stats bool
 	flagSet.StringVar(&id, "n", "", "custom id")
+	flagSet.BoolVar(&daemonized, "d", true, "run daemonized")
 	flagSet.StringVar(&url, "u", config.Client.Url, "URL to connect to")
 	flagSet.StringVar(&userKey, "key", config.Client.UserKey, "User key to use")
 	flagSet.BoolVar(&stats, "stats", false, "Whether to print go-routine count and memory usage stats periodically.")
@@ -442,7 +443,7 @@ func ListenForSignals() {
 	}()
 }
 
-func RunClient(url string, id string, userKey string, rootPath string) {
+func RunClient(url string, id string, userKey string, rootPath string, deamonized bool) {
 	rootPath, _ = filepath.Abs(rootPath)
 	ListenForSignals()
 	socketUrl := fmt.Sprintf("%s/clientsocket", url)
@@ -484,21 +485,22 @@ func RunClient(url string, id string, userKey string, rootPath string) {
 	} else {
 		fmt.Println("A Zed window should now open. If not, make sure Zed is running and configured with the correct userKey.")
 	}
-	context := new(daemon.Context)
-	child, _ := context.Reborn()
-
-	if child != nil {
-		os.Exit(0)
+	if deamonized {
+		context := new(daemon.Context)
+		child, _ := context.Reborn()
+		if child != nil {
+			os.Exit(0)
+		}
+		defer context.Release()
 	}
-	defer context.Release()
-	//fmt.Println("Press Ctrl-c to quit.")
+	fmt.Println("Press Ctrl-c to quit.")
 	err = multiplexer.Multiplex()
 	if err != nil {
 		// TODO do this in a cleaner way (reconnect, that is)
 		if err.Error() == "no-client" {
 			fmt.Printf("ERROR: Your Zed editor is not currently connected to zedrem server %s.\nBe sure Zed is running and the project picker is open.\n", url)
 		} else {
-			RunClient(url, id, userKey, rootPath)
+			RunClient(url, id, userKey, rootPath, deamonized)
 		}
 	}
 }
