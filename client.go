@@ -486,6 +486,7 @@ func RunClient(url string, id string, userKey string, rootPath string, deamonize
 		fmt.Println("A Zed window should now open. If not, make sure Zed is running and configured with the correct userKey.")
 	}
 	if deamonized {
+		os.Args = append([]string{os.Args[0], "-n", id}, os.Args[1:]...)
 		context := new(daemon.Context)
 		child, _ := context.Reborn()
 		if child != nil {
