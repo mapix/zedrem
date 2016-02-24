@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
 	"encoding/json"
-	"code.google.com/p/go-uuid/uuid"
 	"flag"
 	"fmt"
+	"github.com/pborman/uuid"
+	"golang.org/x/net/websocket"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,9 +16,9 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"syscall"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -75,7 +75,7 @@ func safePath(rootPath string, path string) (string, error) {
 var writeLock = make(map[string]chan bool)
 
 type RootedRPCHandler struct {
-        rootPath string
+	rootPath string
 }
 
 func (self *RootedRPCHandler) handleRequest(requestChannel chan []byte, responseChannel chan []byte, closeChannel chan bool) {
@@ -230,7 +230,7 @@ func (self *RootedRPCHandler) handleHead(path string, requestChannel chan []byte
 	responseChannel <- headerBuffer(map[string]string{
 		"ETag":           stat.ModTime().String(),
 		"Content-Length": "0",
-		"X-Type": fileType,
+		"X-Type":         fileType,
 	})
 	return nil
 }
@@ -278,7 +278,7 @@ func (self *RootedRPCHandler) handlePut(path string, requestChannel chan []byte,
 	f.Sync()
 	f.Close()
 
-        // Get existing file permissions
+	// Get existing file permissions
 	var mode os.FileMode = 0666
 	stat, err := os.Stat(safePath)
 	if err == nil {
@@ -286,30 +286,30 @@ func (self *RootedRPCHandler) handlePut(path string, requestChannel chan []byte,
 	}
 	// And then copy it over again
 
-        f, err = os.Open(tempPath)
-        if err != nil {
-                return NewHttpError(500, fmt.Sprintf("Could not read temporary file for copy: %s", tempPath))
-        }
-	fout, err := os.OpenFile(safePath, os.O_WRONLY | os.O_TRUNC | os.O_CREATE, mode)
-        if err != nil {
-                return NewHttpError(500, fmt.Sprintf("Could not open target file for copy: %s", safePath))
-        }
+	f, err = os.Open(tempPath)
+	if err != nil {
+		return NewHttpError(500, fmt.Sprintf("Could not read temporary file for copy: %s", tempPath))
+	}
+	fout, err := os.OpenFile(safePath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, mode)
+	if err != nil {
+		return NewHttpError(500, fmt.Sprintf("Could not open target file for copy: %s", safePath))
+	}
 
-        io.Copy(fout, f)
-        f.Close()
-        fout.Close()
+	io.Copy(fout, f)
+	f.Close()
+	fout.Close()
 
-        os.Remove(tempPath)
+	os.Remove(tempPath)
 
-//         if err := os.Chmod(tempPath, mode); err != nil {
-//                 return NewHttpError(500, "unable to chmod tmpfile: " + err.Error())
-//         }
+	//         if err := os.Chmod(tempPath, mode); err != nil {
+	//                 return NewHttpError(500, "unable to chmod tmpfile: " + err.Error())
+	//         }
 
-//         // Rename the temp file to a the real file. This is done "atomically",
-//         // so that even if something goes weird, we'll either have an old or new version.
-//         if err := os.Rename(tempPath, safePath); err != nil {
-//                 return NewHttpError(500, "Unable to replace old version: " + err.Error())
-//         }
+	//         // Rename the temp file to a the real file. This is done "atomically",
+	//         // so that even if something goes weird, we'll either have an old or new version.
+	//         if err := os.Rename(tempPath, safePath); err != nil {
+	//                 return NewHttpError(500, "Unable to replace old version: " + err.Error())
+	//         }
 
 	stat, _ = os.Stat(safePath)
 	responseChannel <- statusCodeBuffer(200)
@@ -326,7 +326,7 @@ func (self *RootedRPCHandler) handleDelete(path string, requestChannel chan []by
 
 	safePath, err := safePath(self.rootPath, path)
 	if err != nil {
-	dropUntilDelimiter(requestChannel)
+		dropUntilDelimiter(requestChannel)
 		return err.(HttpError)
 	}
 	_, err = os.Stat(safePath)
@@ -407,11 +407,12 @@ func (self *RootedRPCHandler) handlePost(path string, requestChannel chan []byte
 }
 
 // Side-effect: writes to rootPath
-func ParseClientFlags(args []string) (url string, userKey string, rootPath string) {
+func ParseClientFlags(args []string) (id string, url string, userKey string, rootPath string) {
 	config := ParseConfig()
 
 	flagSet := flag.NewFlagSet("zedrem", flag.ExitOnError)
 	var stats bool
+	flagSet.StringVar(&id, "n", "", "custom id")
 	flagSet.StringVar(&url, "u", config.Client.Url, "URL to connect to")
 	flagSet.StringVar(&userKey, "key", config.Client.UserKey, "User key to use")
 	flagSet.BoolVar(&stats, "stats", false, "Whether to print go-routine count and memory usage stats periodically.")
@@ -420,7 +421,7 @@ func ParseClientFlags(args []string) (url string, userKey string, rootPath strin
 		go PrintStats()
 	}
 	if flagSet.NArg() == 0 {
-        	rootPath = "."
+		rootPath = "."
 	} else {
 		rootPath = args[len(args)-1]
 	}
@@ -428,21 +429,21 @@ func ParseClientFlags(args []string) (url string, userKey string, rootPath strin
 }
 
 func ListenForSignals() {
-        sigs := make(chan os.Signal, 1)
-        signal.Notify(sigs,
-                syscall.SIGHUP,
-                syscall.SIGINT,
-                syscall.SIGTERM,
-                syscall.SIGQUIT)
-        go func() {
-                _ = <-sigs
-                os.Exit(0)
-        }()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		_ = <-sigs
+		os.Exit(0)
+	}()
 }
 
 func RunClient(url string, id string, userKey string, rootPath string) {
 	rootPath, _ = filepath.Abs(rootPath)
-        ListenForSignals()
+	ListenForSignals()
 	socketUrl := fmt.Sprintf("%s/clientsocket", url)
 	var ws *websocket.Conn
 	var timeout time.Duration = 1e8
@@ -476,20 +477,20 @@ func RunClient(url string, id string, userKey string, rootPath string) {
 	connectUrl = strings.Replace(connectUrl, "wss://", "https://", 1)
 	multiplexer := NewRPCMultiplexer(ws, &RootedRPCHandler{rootPath})
 
-        if userKey == "" {
-        	fmt.Print("In the Zed application copy and paste following URL to edit:\n\n")
-        	fmt.Printf("  %s/fs/%s\n\n", connectUrl, id)
-        } else {
-                fmt.Println("A Zed window should now open. If not, make sure Zed is running and configured with the correct userKey.")
-        }
+	if userKey == "" {
+		fmt.Print("In the Zed application copy and paste following URL to edit:\n\n")
+		fmt.Printf("  %s/fs/%s\n\n", connectUrl, id)
+	} else {
+		fmt.Println("A Zed window should now open. If not, make sure Zed is running and configured with the correct userKey.")
+	}
 	fmt.Println("Press Ctrl-c to quit.")
 	err = multiplexer.Multiplex()
 	if err != nil {
 		// TODO do this in a cleaner way (reconnect, that is)
 		if err.Error() == "no-client" {
-		        fmt.Printf("ERROR: Your Zed editor is not currently connected to zedrem server %s.\nBe sure Zed is running and the project picker is open.\n", url)
+			fmt.Printf("ERROR: Your Zed editor is not currently connected to zedrem server %s.\nBe sure Zed is running and the project picker is open.\n", url)
 		} else {
-		        RunClient(url, id, userKey, rootPath)
+			RunClient(url, id, userKey, rootPath)
 		}
 	}
 }

@@ -1,0 +1,24 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/pborman/uuid",
+			"repository": "https://github.com/pborman/uuid",
+			"revision": "c55201b036063326c5b1b89ccfe45a184973d073",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/net/websocket",
+			"repository": "https://go.googlesource.com/net",
+			"revision": "4599ae7937fce9b670ce32b8ad32bbb7ae726b3e",
+			"branch": "master",
+			"path": "/websocket"
+		},
+		{
+			"importpath": "gopkg.in/gcfg.v1",
+			"repository": "https://gopkg.in/gcfg.v1",
+			"revision": "083575c3955c85df16fe9590cceab64d03f5eb6e",
+			"branch": "v1"
+		}
+	]
+}
