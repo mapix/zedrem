@@ -18,9 +18,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
+)
+
+var (
+	ignorePatterns []*regexp.Regexp
 )
 
 type HttpError interface {
@@ -63,6 +68,10 @@ func NewHttpError(statusCode int, message string) HttpError {
 }
 
 func safePath(rootPath string, path string) (string, error) {
+	filename := filepath.Join(rootPath, path)
+	if isIgnored(filename) {
+		return "", NewHttpError(403, "access denied")
+	}
 	absPath, err := filepath.Abs(filepath.Join(rootPath, path))
 	if err != nil {
 		return "", NewHttpError(500, err.Error())
@@ -347,9 +356,41 @@ func (self *RootedRPCHandler) handleDelete(path string, requestChannel chan []by
 	return nil
 }
 
+func ParseIgnorePatterns(filename string) (patterns []*regexp.Regexp) {
+	if content, err := ioutil.ReadFile(filename); err == nil {
+		for _, p := range strings.Split(string(content), "\n") {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			if pattern, err := regexp.Compile(p); err == nil {
+				patterns = append(patterns, pattern)
+			} else {
+				fmt.Fprintln(os.Stderr, fmt.Sprintf("Failed compile pattern: %s, %s", p, err))
+			}
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, fmt.Sprintf("Failed read patterns: %s, %s", filename, err))
+	}
+	return
+}
+
+func isIgnored(filename string) bool {
+	for _, pattern := range ignorePatterns {
+		if pattern.MatchString(filename) {
+			return true
+		}
+	}
+	return false
+}
+
 func walkDirectory(responseChannel chan []byte, root string, path string) {
 	files, _ := ioutil.ReadDir(filepath.Join(root, path))
 	for _, f := range files {
+		filename := filepath.Join(root, path, f.Name())
+		if isIgnored(filename) {
+			continue
+		}
 		if f.IsDir() {
 			walkDirectory(responseChannel, root, filepath.Join(path, f.Name()))
 		} else {
@@ -408,15 +449,16 @@ func (self *RootedRPCHandler) handlePost(path string, requestChannel chan []byte
 }
 
 // Side-effect: writes to rootPath
-func ParseClientFlags(args []string) (id string, url string, userKey string, rootPath string, daemonized bool) {
+func ParseClientFlags(args []string) (id string, url string, userKey string, rootPath string, daemonized bool, ignorePatternFile string) {
 	config := ParseConfig()
 
 	flagSet := flag.NewFlagSet("zedrem", flag.ExitOnError)
 	var stats bool
 	flagSet.StringVar(&id, "n", "", "custom id")
-	flagSet.BoolVar(&daemonized, "d", true, "run daemonized")
+	flagSet.BoolVar(&daemonized, "d", false, "run daemonized")
 	flagSet.StringVar(&url, "u", config.Client.Url, "URL to connect to")
 	flagSet.StringVar(&userKey, "key", config.Client.UserKey, "User key to use")
+	flagSet.StringVar(&ignorePatternFile, "i", "", "ignore pattern file")
 	flagSet.BoolVar(&stats, "stats", false, "Whether to print go-routine count and memory usage stats periodically.")
 	flagSet.Parse(args)
 	if stats {

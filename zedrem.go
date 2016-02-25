@@ -21,9 +21,12 @@ func main() {
 		ip, port, sslCrt, sslKey := ParseServerFlags(os.Args[2:])
 		RunServer(ip, port, sslCrt, sslKey, false)
 	case "client":
-		id, url, userKey, rootPath, daemonized := ParseClientFlags(os.Args[1:])
+		id, url, userKey, rootPath, daemonized, ignorePatternFile := ParseClientFlags(os.Args[1:])
 		if id == "" {
 			id = strings.Replace(uuid.New(), "-", "", -1)
+		}
+		if ignorePatternFile != "" {
+			ignorePatterns = ParseIgnorePatterns(ignorePatternFile)
 		}
 		RunClient(url, id, userKey, rootPath, daemonized)
 	case "help":
